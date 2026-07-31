@@ -74,6 +74,20 @@
     transition: all .2s;
   }
   .btn-mgr:hover { background: rgba(184,147,94,0.12); border-color: var(--gold); }
+  .btn-logout {
+    background: transparent;
+    border: 1px solid rgba(192,57,43,0.4);
+    color: #E08A80;
+    padding: 7px 14px;
+    border-radius: 4px;
+    font-family: 'Inter', sans-serif;
+    font-size: 11.5px;
+    font-weight: 500;
+    letter-spacing: 0.4px;
+    cursor: pointer;
+    transition: all .2s;
+  }
+  .btn-logout:hover { background: rgba(192,57,43,0.14); border-color: #E08A80; }
   .advisor-badge {
     display: flex;
     align-items: center;
@@ -311,19 +325,20 @@
   .btn-submit {
     width: 100%;
     padding: 16px;
-    background: var(--gold);
-    color: var(--navy);
+    background: #1B4F8C;
+    color: #FFFFFF;
     border: none;
-    border-radius: 12px;
-    font-family: 'Cormorant Garamond', serif;
-    font-size: 16px;
-    font-weight: 600;
+    border-radius: 8px;
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    text-transform: uppercase;
     cursor: pointer;
     transition: all .2s;
-    letter-spacing: .5px;
-    box-shadow: 0 4px 20px rgba(201,168,76,0.3);
+    letter-spacing: 1.2px;
+    box-shadow: 0 4px 20px rgba(27,79,140,0.35);
   }
-  .btn-submit:hover { background: var(--gold-light); transform: translateY(-1px); box-shadow: 0 6px 24px rgba(201,168,76,0.4); }
+  .btn-submit:hover { background: #2461AC; transform: translateY(-1px); box-shadow: 0 6px 24px rgba(27,79,140,0.45); }
   .btn-submit:active { transform: translateY(0); }
 
   /* ── TODAY SUMMARY ── */
@@ -714,6 +729,7 @@
       <div class="advisor-avatar" id="avatarInitials">—</div>
       <span id="advisorNameDisplay" style="font-size:13px; color:#fff;">Set up profile</span>
     </div>
+    <button class="btn-logout" onclick="logoutAdvisor()">Log Out</button>
   </div>
 </header>
 
@@ -1342,6 +1358,15 @@ function openManagerFrame() {
 
 function closeManagerFrame() {
   document.getElementById('mgrFrameOverlay').classList.remove('open');
+}
+
+// ── LOGOUT ───────────────────────────────────────────────
+function logoutAdvisor() {
+  const ok = confirm("Log out? You'll need to re-enter your email and profile to log back in.");
+  if (!ok) return;
+  localStorage.removeItem(EMAIL_KEY);
+  localStorage.removeItem(PROFILE_KEY);
+  location.reload();
 }
 
 // ── TOAST ─────────────────────────────────────────────────
