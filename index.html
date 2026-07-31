@@ -976,9 +976,11 @@
 // Paste your deployed Google Apps Script Web App URL here (see Code.gs).
 const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz3kBCO842j8u9MkOf8hc4U8NjxYltc7GGojd3nThq7Y2UUSCHZsYM3KYY4cHsWt58HbQ/exec";
 const PROFILE_KEY = "gge_advisor_profile";
-// Set this to your next GST Day date (format: YYYY-MM-DD). Raffle entries can
-// only be submitted when today matches this date — change it before each event.
-const GST_DATE = "2026-08-15";
+// GST Day date and Raffle Start Date are no longer set here — they're
+// controlled from the Manager Dashboard Control Center and fetched live
+// from the backend on load. See loadSettings().
+let GST_DATE = null;
+let RAFFLE_START_DATE = null;
 
 let MANAGERS = []; // loaded live from the backend — populated by loadManagers()
 
@@ -1061,6 +1063,7 @@ async function submitEmailGate() {
 }
 
 async function startApp() {
+  await loadSettings();
   await loadManagers();
   loadProfile();
   if (profile.name) {
@@ -1076,6 +1079,21 @@ async function startApp() {
   buildCounterList();
   loadTodayDraft();
   renderRaffleBalance();
+}
+
+// Fetches GST_DATE and RAFFLE_START_DATE from the backend — these are set
+// from the Manager Dashboard Control Center, not hardcoded here.
+async function loadSettings() {
+  try {
+    const res = await fetch(`${APPS_SCRIPT_URL}?action=getSettings`);
+    const data = await res.json();
+    GST_DATE = data.gstDate || null;
+    RAFFLE_START_DATE = data.raffleStartDate || null;
+  } catch (err) {
+    console.error('Could not load settings:', err);
+    GST_DATE = null;
+    RAFFLE_START_DATE = null;
+  }
 }
 
 async function loadManagers() {
@@ -1488,6 +1506,7 @@ async function loadRaffleHistory() {
 // submission — or since their earliest log ever, if they've never submitted.
 function computeRaffleTally() {
   if (!profile.name) return { green: 0, red: 0, balance: 0 };
+  if (!lastRaffleDate && !RAFFLE_START_DATE) return { green: 0, red: 0, balance: 0 };
 
   const logs = getLogs();
   const today = todayStr();
@@ -1497,8 +1516,9 @@ function computeRaffleTally() {
     startDate = new Date(lastRaffleDate + 'T00:00:00');
     startDate.setDate(startDate.getDate() + 1); // start counting the day AFTER the last submission
   } else {
-    const allDates = Object.keys(logs).sort();
-    startDate = allDates.length ? new Date(allDates[0] + 'T00:00:00') : new Date(today + 'T00:00:00');
+    // Never submitted before — start from the fixed raffle launch date,
+    // not their full historical log backlog.
+    startDate = new Date(RAFFLE_START_DATE + 'T00:00:00');
   }
 
   const endDate = new Date(today + 'T00:00:00');
@@ -1530,6 +1550,13 @@ function renderRaffleBalance() {
   if (!profile.name) {
     btn.disabled = true;
     note.textContent = 'Complete your profile to start earning raffle entries.';
+    banner.classList.remove('visible');
+    return;
+  }
+
+  if (!GST_DATE) {
+    btn.disabled = true;
+    note.textContent = 'GST Day has not been set yet. Check back soon.';
     banner.classList.remove('visible');
     return;
   }
