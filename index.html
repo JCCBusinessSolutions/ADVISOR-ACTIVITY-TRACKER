@@ -741,7 +741,7 @@
     <span class="mgr-frame-label">Manager Dashboard</span>
     <span style="width:120px;"></span>
   </div>
-  <iframe id="mgrFrameIframe" src="" title="Manager Dashboard"></iframe>
+  <iframe id="mgrFrameIframe" title="Manager Dashboard"></iframe>
 </div>
 
 <script>
@@ -1193,10 +1193,14 @@ function getLogs() {
 // ── MANAGER VIEW (embedded frame) ───────────────────────────
 // Points to your deployed Manager Dashboard. Update if you ever move it.
 const MANAGER_DASHBOARD_URL = "https://jccbusinesssolutions.github.io/MANAGER-ACVITITY-TRACKER/";
+let managerFrameLoaded = false;
 
 function openManagerFrame() {
   const iframe = document.getElementById('mgrFrameIframe');
-  if (!iframe.src) iframe.src = MANAGER_DASHBOARD_URL;
+  if (!managerFrameLoaded) {
+    iframe.src = MANAGER_DASHBOARD_URL;
+    managerFrameLoaded = true;
+  }
   document.getElementById('mgrFrameOverlay').classList.add('open');
 }
 
