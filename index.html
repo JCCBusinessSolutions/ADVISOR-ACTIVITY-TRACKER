@@ -354,6 +354,52 @@
   .si-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--gold); flex-shrink: 0; }
   .si-count { margin-left: auto; background: rgba(201,168,76,0.2); color: var(--gold); border-radius: 12px; padding: 2px 10px; font-size: 12px; font-weight: 500; }
 
+  /* ── MANAGER FRAME OVERLAY ── */
+  .mgr-frame-overlay {
+    position: fixed;
+    inset: 0;
+    background: var(--cream);
+    z-index: 500;
+    display: none;
+    flex-direction: column;
+  }
+  .mgr-frame-overlay.open { display: flex; }
+  .mgr-frame-bar {
+    height: 52px;
+    background: var(--navy);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 18px;
+    flex-shrink: 0;
+    border-bottom: 1px solid rgba(184,147,94,0.25);
+  }
+  .mgr-frame-back {
+    background: transparent;
+    border: 1px solid var(--gold-dim);
+    color: var(--gold);
+    padding: 6px 14px;
+    border-radius: 4px;
+    font-family: 'Inter', sans-serif;
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.3px;
+    cursor: pointer;
+    transition: all .2s;
+  }
+  .mgr-frame-back:hover { background: rgba(184,147,94,0.12); }
+  .mgr-frame-label {
+    font-family: 'Cormorant Garamond', serif;
+    color: var(--gold);
+    font-size: 14px;
+    letter-spacing: 0.3px;
+  }
+  .mgr-frame-overlay iframe {
+    flex: 1;
+    width: 100%;
+    border: none;
+  }
+
   /* ── TOAST ── */
   .toast {
     position: fixed;
@@ -586,7 +632,7 @@
     </div>
   </div>
   <div class="header-right">
-    <button class="btn-mgr" onclick="window.open('gge-manager-dashboard.html', '_blank')">Manager View →</button>
+    <button class="btn-mgr" onclick="openManagerFrame()">Manager View →</button>
     <div class="advisor-badge">
       <div class="advisor-avatar" id="avatarInitials">—</div>
       <span id="advisorNameDisplay" style="font-size:13px; color:#fff;">Set up profile</span>
@@ -687,6 +733,16 @@
 
 <!-- TOAST -->
 <div class="toast" id="toast"></div>
+
+<!-- MANAGER VIEW (embedded via iframe, same origin as GitHub Pages) -->
+<div class="mgr-frame-overlay" id="mgrFrameOverlay">
+  <div class="mgr-frame-bar">
+    <button class="mgr-frame-back" onclick="closeManagerFrame()">← Back to Tracker</button>
+    <span class="mgr-frame-label">Manager Dashboard</span>
+    <span style="width:120px;"></span>
+  </div>
+  <iframe id="mgrFrameIframe" src="" title="Manager Dashboard"></iframe>
+</div>
 
 <script>
 // ── CONFIG ──────────────────────────────────────────────
@@ -1132,6 +1188,20 @@ function hideDayPopover() { document.getElementById('dayPopover').classList.remo
 // Google Sheet backend on load (see loadAdvisorLogs) and kept in memory.
 function getLogs() {
   return advisorLogsCache;
+}
+
+// ── MANAGER VIEW (embedded frame) ───────────────────────────
+// Points to your deployed Manager Dashboard. Update if you ever move it.
+const MANAGER_DASHBOARD_URL = "https://jccbusinesssolutions.github.io/MANAGER-ACVITITY-TRACKER/";
+
+function openManagerFrame() {
+  const iframe = document.getElementById('mgrFrameIframe');
+  if (!iframe.src) iframe.src = MANAGER_DASHBOARD_URL;
+  document.getElementById('mgrFrameOverlay').classList.add('open');
+}
+
+function closeManagerFrame() {
+  document.getElementById('mgrFrameOverlay').classList.remove('open');
 }
 
 // ── TOAST ─────────────────────────────────────────────────
