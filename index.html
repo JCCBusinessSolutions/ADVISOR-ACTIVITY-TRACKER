@@ -107,6 +107,119 @@
   /* ── MAIN LAYOUT ── */
   main { max-width: 760px; margin: 0 auto; padding: 28px 20px 60px; }
 
+  /* ── GST DAY BLINKING BANNER ── */
+  @keyframes gstBlink {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.55; transform: scale(0.985); }
+  }
+  .gst-banner {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    background: linear-gradient(135deg, #1B4F8C 0%, #0A1628 100%);
+    border: 2px solid var(--gold);
+    border-radius: 14px;
+    padding: 20px 24px;
+    margin-bottom: 22px;
+    text-align: center;
+    animation: gstBlink 1.1s ease-in-out infinite;
+    box-shadow: 0 10px 34px rgba(27,79,140,0.5);
+  }
+  .gst-banner.visible { display: flex; }
+  .gst-banner-label {
+    color: var(--gold);
+    font-family: 'Inter', sans-serif;
+    font-weight: 700;
+    font-size: 12.5px;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  .gst-banner-num {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 68px;
+    font-weight: 700;
+    color: #FFFFFF;
+    line-height: 1;
+  }
+  .gst-banner-sub {
+    font-family: 'Inter', sans-serif;
+    color: rgba(255,255,255,0.7);
+    font-size: 11.5px;
+    margin-top: 6px;
+  }
+
+  /* ── RAFFLE ENTRIES CARD ── */
+  .raffle-card {
+    background: var(--navy);
+    border-radius: 14px;
+    padding: 24px 22px;
+    margin-bottom: 24px;
+    text-align: center;
+    border: 1px solid rgba(184,147,94,0.25);
+  }
+  .raffle-title {
+    font-family: 'Cormorant Garamond', serif;
+    color: var(--gold);
+    font-size: 17px;
+    font-weight: 600;
+  }
+  .raffle-sub {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 3px;
+    margin-bottom: 18px;
+  }
+  .raffle-balance-num {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 54px;
+    font-weight: 700;
+    color: #FFFFFF;
+    line-height: 1;
+  }
+  .raffle-balance-lbl {
+    font-size: 10.5px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+    margin-top: 5px;
+    margin-bottom: 18px;
+  }
+  .raffle-breakdown {
+    display: flex;
+    justify-content: center;
+    gap: 24px;
+    margin-bottom: 20px;
+    font-family: 'Inter', sans-serif;
+  }
+  .raffle-stat { font-size: 12px; color: rgba(255,255,255,0.75); }
+  .raffle-stat span { display: block; font-size: 20px; font-weight: 700; margin-bottom: 2px; }
+  .raffle-stat.green span { color: #2ECC71; }
+  .raffle-stat.red span { color: #E74C3C; }
+  .raffle-submit-btn {
+    width: 100%;
+    padding: 14px;
+    background: #1B4F8C;
+    color: #FFFFFF;
+    border: none;
+    border-radius: 8px;
+    font-family: 'Inter', sans-serif;
+    font-weight: 700;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+    cursor: pointer;
+    transition: all .2s;
+  }
+  .raffle-submit-btn:hover:not(:disabled) { background: #2461AC; }
+  .raffle-submit-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+  .raffle-note {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 10px;
+    font-family: 'Inter', sans-serif;
+  }
+
   /* ── DATE STRIP ── */
   .date-strip {
     background: var(--navy);
@@ -760,6 +873,27 @@
     <button class="btn-save" onclick="saveProfile()">Save Profile</button>
   </div>
 
+  <!-- GST DAY BLINKING BANNER (visible only on GST_DATE) -->
+  <div class="gst-banner" id="gstBanner">
+    <div class="gst-banner-label">It's GST Day — Submit Your Raffle Entries!</div>
+    <div class="gst-banner-num" id="gstBannerNum">0</div>
+    <div class="gst-banner-sub">Raffle Entries Ready</div>
+  </div>
+
+  <!-- RAFFLE ENTRIES -->
+  <div class="raffle-card">
+    <div class="raffle-title">Raffle Entries</div>
+    <div class="raffle-sub">Earn entries from green days, lose them on red days</div>
+    <div class="raffle-balance-num" id="raffleBalanceNum">0</div>
+    <div class="raffle-balance-lbl">Current Balance</div>
+    <div class="raffle-breakdown">
+      <div class="raffle-stat green"><span id="raffleGreenCount">0</span>Green Days</div>
+      <div class="raffle-stat red"><span id="raffleRedCount">0</span>Red Days</div>
+    </div>
+    <button class="raffle-submit-btn" id="raffleSubmitBtn" onclick="submitRaffleEntries()" disabled>Submit All Raffle Entries</button>
+    <div class="raffle-note" id="raffleNote">Entries can only be submitted on GST Day.</div>
+  </div>
+
   <!-- DATE STRIP -->
   <div class="date-strip">
     <div class="date-strip-left">
@@ -842,6 +976,9 @@
 // Paste your deployed Google Apps Script Web App URL here (see Code.gs).
 const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz3kBCO842j8u9MkOf8hc4U8NjxYltc7GGojd3nThq7Y2UUSCHZsYM3KYY4cHsWt58HbQ/exec";
 const PROFILE_KEY = "gge_advisor_profile";
+// Set this to your next GST Day date (format: YYYY-MM-DD). Raffle entries can
+// only be submitted when today matches this date — change it before each event.
+const GST_DATE = "2026-08-15";
 
 let MANAGERS = []; // loaded live from the backend — populated by loadManagers()
 
@@ -928,6 +1065,7 @@ async function startApp() {
   loadProfile();
   if (profile.name) {
     await loadAdvisorLogs();
+    await loadRaffleHistory();
     const firstName = profile.name.trim().split(' ')[0];
     showToast(`Welcome, ${firstName}!`);
   }
@@ -937,6 +1075,7 @@ async function startApp() {
   buildActivityGrid();
   buildCounterList();
   loadTodayDraft();
+  renderRaffleBalance();
 }
 
 async function loadManagers() {
@@ -1028,9 +1167,11 @@ async function saveProfile() {
   document.getElementById('setupCard').style.display = 'none';
   showToast("Profile saved");
   await loadAdvisorLogs();
+  await loadRaffleHistory();
   buildCalendar();
   buildMonthBoard();
   updateStreak();
+  renderRaffleBalance();
 }
 
 function updateHeaderProfile() {
@@ -1216,6 +1357,7 @@ async function submitLog() {
     buildCalendar();
     buildMonthBoard();
     updateStreak();
+    renderRaffleBalance();
     showSummary(logEntry);
     showToast("Activity log submitted.");
   } catch (err) {
@@ -1317,6 +1459,137 @@ function countWorkdays(year, month, upToDay) {
     if (dow !== 0 && dow !== 6) count++;
   }
   return count;
+}
+
+// ── RAFFLE ENTRIES (GST Day) ───────────────────────────────
+let raffleEntries = [];   // this advisor's full raffle submission history
+let lastRaffleDate = null; // most recent submission date (YYYY-MM-DD), or null if never submitted
+
+function isGSTDay() {
+  return todayStr() === GST_DATE;
+}
+
+async function loadRaffleHistory() {
+  try {
+    const res = await fetch(`${APPS_SCRIPT_URL}?action=getRaffleForAdvisor&advisor=${encodeURIComponent(profile.name)}`);
+    const data = await res.json();
+    raffleEntries = data.entries || [];
+    lastRaffleDate = raffleEntries.length
+      ? raffleEntries.map(e => e.date).sort().pop()
+      : null;
+  } catch (err) {
+    console.error('Could not load raffle history:', err);
+    raffleEntries = [];
+    lastRaffleDate = null;
+  }
+}
+
+// Counts green (logged) and red (missed weekday) days since the last raffle
+// submission — or since their earliest log ever, if they've never submitted.
+function computeRaffleTally() {
+  if (!profile.name) return { green: 0, red: 0, balance: 0 };
+
+  const logs = getLogs();
+  const today = todayStr();
+
+  let startDate;
+  if (lastRaffleDate) {
+    startDate = new Date(lastRaffleDate + 'T00:00:00');
+    startDate.setDate(startDate.getDate() + 1); // start counting the day AFTER the last submission
+  } else {
+    const allDates = Object.keys(logs).sort();
+    startDate = allDates.length ? new Date(allDates[0] + 'T00:00:00') : new Date(today + 'T00:00:00');
+  }
+
+  const endDate = new Date(today + 'T00:00:00');
+  let green = 0, red = 0;
+
+  for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+    const dateKey = d.toISOString().split('T')[0];
+    const isPast = dateKey < today;
+    const dow = d.getDay();
+    const isWeekend = dow === 0 || dow === 6;
+    if (logs[dateKey]) green++;
+    else if (isPast && !isWeekend) red++;
+  }
+
+  return { green, red, balance: Math.max(0, green - red) };
+}
+
+function renderRaffleBalance() {
+  const { green, red, balance } = computeRaffleTally();
+
+  document.getElementById('raffleBalanceNum').textContent = balance;
+  document.getElementById('raffleGreenCount').textContent = green;
+  document.getElementById('raffleRedCount').textContent = red;
+
+  const btn = document.getElementById('raffleSubmitBtn');
+  const note = document.getElementById('raffleNote');
+  const banner = document.getElementById('gstBanner');
+
+  if (!profile.name) {
+    btn.disabled = true;
+    note.textContent = 'Complete your profile to start earning raffle entries.';
+    banner.classList.remove('visible');
+    return;
+  }
+
+  if (isGSTDay()) {
+    banner.classList.add('visible');
+    document.getElementById('gstBannerNum').textContent = balance;
+    if (balance > 0) {
+      btn.disabled = false;
+      note.textContent = "It's GST Day — submit your entries below!";
+    } else {
+      btn.disabled = true;
+      note.textContent = "It's GST Day, but you have no entries to submit.";
+    }
+  } else {
+    banner.classList.remove('visible');
+    btn.disabled = true;
+    note.textContent = 'Entries can only be submitted on GST Day.';
+  }
+}
+
+async function submitRaffleEntries() {
+  if (!profile.name) return;
+  const { green, red, balance } = computeRaffleTally();
+  if (balance <= 0) { showToast('No raffle entries to submit.'); return; }
+  if (!isGSTDay()) { showToast('Raffle entries can only be submitted on GST Day.'); return; }
+
+  const btn = document.getElementById('raffleSubmitBtn');
+  const originalText = btn.textContent;
+  btn.textContent = 'Submitting...';
+  btn.disabled = true;
+
+  try {
+    const today = todayStr();
+    const res = await fetch(APPS_SCRIPT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({
+        action: 'submitRaffle',
+        date: today,
+        advisor: profile,
+        greenCount: green,
+        redCount: red,
+        entriesSubmitted: balance,
+      }),
+    });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.error || 'Submit failed');
+
+    lastRaffleDate = today;
+    raffleEntries.push({ date: today, greenCount: green, redCount: red, entriesSubmitted: balance });
+    renderRaffleBalance();
+    showToast(`${balance} raffle entries submitted!`);
+  } catch (err) {
+    console.error(err);
+    showToast('Could not submit raffle entries — check your connection and try again.');
+  } finally {
+    btn.textContent = originalText;
+    btn.disabled = !isGSTDay() || computeRaffleTally().balance <= 0;
+  }
 }
 
 function showDayPopover(e, dateKey, log) {
