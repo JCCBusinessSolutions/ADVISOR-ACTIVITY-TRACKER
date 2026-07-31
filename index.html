@@ -159,15 +159,30 @@
     border: 1px solid rgba(184,147,94,0.25);
   }
   .raffle-title {
-    font-family: 'Cormorant Garamond', serif;
+    font-family: Arial, Helvetica, sans-serif;
     color: var(--gold);
-    font-size: 17px;
-    font-weight: 600;
+    font-size: 19px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
   }
   .raffle-sub {
-    font-size: 11px;
+    font-size: 13px;
     color: var(--muted);
-    margin-top: 3px;
+    margin-top: 5px;
+    margin-bottom: 18px;
+  }
+  .raffle-gst-date {
+    display: inline-block;
+    background: rgba(184,147,94,0.12);
+    border: 1px solid rgba(184,147,94,0.35);
+    color: var(--gold);
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.4px;
+    padding: 6px 16px;
+    border-radius: 20px;
     margin-bottom: 18px;
   }
   .raffle-balance-num {
@@ -178,7 +193,7 @@
     line-height: 1;
   }
   .raffle-balance-lbl {
-    font-size: 10.5px;
+    font-size: 12.5px;
     color: var(--muted);
     text-transform: uppercase;
     letter-spacing: 1.2px;
@@ -192,29 +207,29 @@
     margin-bottom: 20px;
     font-family: 'Inter', sans-serif;
   }
-  .raffle-stat { font-size: 12px; color: rgba(255,255,255,0.75); }
-  .raffle-stat span { display: block; font-size: 20px; font-weight: 700; margin-bottom: 2px; }
+  .raffle-stat { font-size: 14px; color: rgba(255,255,255,0.85); }
+  .raffle-stat span { display: block; font-size: 24px; font-weight: 700; margin-bottom: 3px; }
   .raffle-stat.green span { color: #2ECC71; }
   .raffle-stat.red span { color: #E74C3C; }
   .raffle-submit-btn {
     width: 100%;
-    padding: 14px;
+    padding: 15px;
     background: #1B4F8C;
     color: #FFFFFF;
     border: none;
     border-radius: 8px;
     font-family: 'Inter', sans-serif;
     font-weight: 700;
-    font-size: 13px;
+    font-size: 15px;
     text-transform: uppercase;
     letter-spacing: 1.2px;
     cursor: pointer;
     transition: all .2s;
   }
   .raffle-submit-btn:hover:not(:disabled) { background: #2461AC; }
-  .raffle-submit-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+  .raffle-submit-btn:disabled { background: #2C3E5C; color: rgba(255,255,255,0.75); cursor: not-allowed; }
   .raffle-note {
-    font-size: 11px;
+    font-size: 13px;
     color: var(--muted);
     margin-top: 10px;
     font-family: 'Inter', sans-serif;
@@ -884,6 +899,7 @@
   <div class="raffle-card">
     <div class="raffle-title">Raffle Entries</div>
     <div class="raffle-sub">Earn entries from green days, lose them on red days</div>
+    <div class="raffle-gst-date" id="raffleGstDateLabel"></div>
     <div class="raffle-balance-num" id="raffleBalanceNum">0</div>
     <div class="raffle-balance-lbl">Current Balance</div>
     <div class="raffle-breakdown">
@@ -1551,6 +1567,7 @@ function renderRaffleBalance() {
     btn.disabled = true;
     note.textContent = 'Complete your profile to start earning raffle entries.';
     banner.classList.remove('visible');
+    document.getElementById('raffleGstDateLabel').style.display = 'none';
     return;
   }
 
@@ -1558,8 +1575,14 @@ function renderRaffleBalance() {
     btn.disabled = true;
     note.textContent = 'GST Day has not been set yet. Check back soon.';
     banner.classList.remove('visible');
+    document.getElementById('raffleGstDateLabel').style.display = 'none';
     return;
   }
+
+  const gstDateLabel = formatGSTDateLabel(GST_DATE);
+  const gstLabelEl = document.getElementById('raffleGstDateLabel');
+  gstLabelEl.textContent = `Next GST Day: ${gstDateLabel}`;
+  gstLabelEl.style.display = 'inline-block';
 
   if (isGSTDay()) {
     banner.classList.add('visible');
@@ -1574,8 +1597,15 @@ function renderRaffleBalance() {
   } else {
     banner.classList.remove('visible');
     btn.disabled = true;
-    note.textContent = 'Entries can only be submitted on GST Day.';
+    note.textContent = `Entries can only be submitted on GST Day — ${gstDateLabel}.`;
   }
+}
+
+// Formats "2026-08-15" into "August 15, 2026" for display.
+function formatGSTDateLabel(dateStr) {
+  const d = new Date(dateStr + 'T00:00:00');
+  if (isNaN(d.getTime())) return dateStr;
+  return d.toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' });
 }
 
 async function submitRaffleEntries() {
