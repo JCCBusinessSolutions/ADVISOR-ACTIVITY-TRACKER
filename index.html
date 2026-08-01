@@ -1099,12 +1099,20 @@ async function submitEmailGate() {
 }
 
 async function startApp() {
-  await loadSettings();
-  await loadManagers();
-  await loadProfile();
+  // Show a fast, "good enough" name from the local cache immediately —
+  // before any network calls — so the advisor isn't staring at a blank
+  // header. The authoritative version from the server arrives moments
+  // later via loadProfile() below and silently corrects it if different.
+  showCachedProfileImmediately();
+
+  // Settings, Managers, and Profile don't depend on each other — fetch all
+  // three at once instead of one-after-another, which was the real cause
+  // of the delay (each Apps Script call can take 1-2s on its own).
+  await Promise.all([loadSettings(), loadManagers(), loadProfile()]);
+  updateUnitDisplay(); // re-run now that MANAGERS is guaranteed to be loaded
+
   if (profile.name) {
-    await loadAdvisorLogs();
-    await loadRaffleHistory();
+    await Promise.all([loadAdvisorLogs(), loadRaffleHistory()]);
     const firstName = profile.name.trim().split(' ')[0];
     showToast(`Welcome, ${firstName}!`);
   }
@@ -1199,6 +1207,26 @@ function updateUnitDisplay() {
     el.style.display = 'block';
   } else {
     el.style.display = 'none';
+  }
+}
+
+// Shows whatever profile is in the local cache immediately, synchronously,
+// before any network call has a chance to respond. Purely cosmetic — the
+// real, authoritative data still comes from loadProfile() moments later.
+function showCachedProfileImmediately() {
+  const saved = localStorage.getItem(PROFILE_KEY);
+  if (!saved) return;
+  try {
+    const cached = JSON.parse(saved);
+    if (!cached.name) return;
+    profile = cached;
+    document.getElementById('advisorName').value = cached.name || '';
+    document.getElementById('advisorCode').value = cached.code || '';
+    document.getElementById('advisorMgr').value = cached.manager || '';
+    updateHeaderProfile();
+    document.getElementById('setupCard').style.display = 'none';
+  } catch (err) {
+    // Corrupt cache — ignore, loadProfile() will sort it out from the server.
   }
 }
 
