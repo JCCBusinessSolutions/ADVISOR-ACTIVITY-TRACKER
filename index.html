@@ -1551,13 +1551,13 @@ function buildMonthBoard() {
     const logEntry = logs[dateKey];
     const actCount = logEntry ? Object.keys(logEntry.activities || {}).length : 0;
     const dow = new Date(year, month, d).getDay();
-    const isWeekend = dow === 0 || dow === 6;
+    const isRestDay = dow === 0; // Sunday only — Saturday is now a working day
 
     let cls = 'mb-cell';
     if (isFuture) { cls += ' future'; }
     else if (logEntry) { cls += ' green clickable'; loggedDays++; }
-    else if (isPast && !isWeekend) { cls += ' red'; missedDays++; }
-    else if (isPast && isWeekend) { cls += ' future'; } // weekends past = gray (no penalty)
+    else if (isPast && !isRestDay) { cls += ' red'; missedDays++; }
+    else if (isPast && isRestDay) { cls += ' future'; } // Sunday past = gray (no penalty)
     if (isToday) cls += ' today-cell clickable';
 
     const cell = document.createElement('div');
@@ -1586,7 +1586,7 @@ function countWorkdays(year, month, upToDay) {
   let count = 0;
   for (let d = 1; d <= upToDay; d++) {
     const dow = new Date(year, month, d).getDay();
-    if (dow !== 0 && dow !== 6) count++;
+    if (dow !== 0) count++; // Sunday is the only rest day now
   }
   return count;
 }
@@ -1640,9 +1640,9 @@ function computeRaffleTally() {
     const dateKey = d.toISOString().split('T')[0];
     const isPast = dateKey < today;
     const dow = d.getDay();
-    const isWeekend = dow === 0 || dow === 6;
+    const isRestDay = dow === 0; // Sunday only — Saturday now counts toward red days
     if (logs[dateKey]) green++;
-    else if (isPast && !isWeekend) red++;
+    else if (isPast && !isRestDay) red++;
   }
 
   return { green, red, balance: Math.max(0, green - red) };
