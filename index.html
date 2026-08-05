@@ -1101,66 +1101,115 @@ async function submitEmailGate() {
   }
 }
 
+const BUNDLE_CACHE_KEY = 'gge_advisor_bundle_cache';
+
+// Rebuilds the cached bundle from current in-memory state and saves it —
+// used after submitting a log or raffle entry, so the NEXT visit's instant
+// cached render already reflects what was just submitted, not yesterday's
+// data with today's action missing from it.
+function refreshBundleCache() {
+  if (!profile.name) return;
+  const bundle = {
+    settings: { gstDate: GST_DATE, raffleStartDate: RAFFLE_START_DATE },
+    managers: MANAGERS,
+    profile: profile,
+    logs: Object.values(advisorLogsCache),
+    raffleEntries: raffleEntries,
+  };
+  localStorage.setItem(BUNDLE_CACHE_KEY, JSON.stringify(bundle));
+}
+
+// Applies a data bundle (from cache OR from a fresh network response) to
+// app state and renders the full UI. Called twice in the normal flow:
+// once instantly with stale cached data, once again silently when the
+// real network response arrives.
+function applyBundleAndRender(bundle) {
+  GST_DATE = bundle.settings?.gstDate || null;
+  RAFFLE_START_DATE = bundle.settings?.raffleStartDate || null;
+  MANAGERS = bundle.managers || [];
+
+  if (bundle.profile && bundle.profile.name) {
+    profile = bundle.profile;
+    document.getElementById('advisorName').value = profile.name || '';
+    document.getElementById('advisorCode').value = profile.code || '';
+    document.getElementById('advisorMgr').value = profile.manager || '';
+    document.getElementById('setupCard').style.display = 'none';
+
+    advisorLogsCache = {};
+    (bundle.logs || []).forEach(l => { advisorLogsCache[l.date] = l; });
+
+    raffleEntries = bundle.raffleEntries || [];
+    lastRaffleDate = raffleEntries.length
+      ? raffleEntries.map(e => e.date).sort().pop()
+      : null;
+  } else if (!profile.name) {
+    document.getElementById('setupCard').style.display = 'block';
+  }
+
+  populateManagerDropdown();
+  updateUnitDisplay();
+  initDateStrip();
+  buildCalendar();
+  buildMonthBoard();
+  buildActivityGrid();
+  buildCounterList();
+  renderRaffleBalance();
+}
+
 async function startApp() {
   // Show a fast, "good enough" name from the local cache immediately —
   // before any network calls — so the advisor isn't staring at a blank
   // header while the real request is in flight.
   showCachedProfileImmediately();
 
-  // Everything the app needs to start (settings, managers, profile, logs,
-  // raffle history) now comes from ONE combined backend call instead of
-  // five separate ones. The previous "fire 5 in parallel" approach still
-  // took 10-15s in practice — Apps Script Web Apps don't reliably run
-  // multiple concurrent requests from the same client at the same time on
-  // Google's side, so "parallel" fetches were still getting queued behind
-  // each other server-side. One execution, one round trip, is the real fix.
+  // ── STALE-WHILE-REVALIDATE (same pattern as Client Pulse) ──
+  // If we have a cached bundle from last time, render the FULL app with it
+  // instantly — calendar, month board, raffle balance, everything —
+  // before any network call. The advisor sees a working app in ~0 seconds
+  // instead of staring at a blank screen for several seconds. The real,
+  // current data then quietly replaces it moments later once the network
+  // call resolves — usually seamless since most days nothing changed.
+  const cachedRaw = localStorage.getItem(BUNDLE_CACHE_KEY);
+  let hadCache = false;
+  if (cachedRaw) {
+    try {
+      const cachedBundle = JSON.parse(cachedRaw);
+      applyBundleAndRender(cachedBundle);
+      hadCache = true;
+    } catch (err) {
+      // Corrupt cache — ignore, the network fetch below will populate fresh.
+    }
+  }
+
+  if (!hadCache) {
+    loadTodayDraft(); // only meaningful before the first real render
+  }
+
+  // Everything the app needs now comes from ONE combined backend call
+  // instead of five separate ones — collapses the network cost to a
+  // single round trip regardless of whether this is a cache hit or miss.
   try {
     const res = await fetch(`${APPS_SCRIPT_URL}?action=getInitialBundle&email=${encodeURIComponent(advisorEmail || '')}`);
     const bundle = await res.json();
 
-    GST_DATE = bundle.settings?.gstDate || null;
-    RAFFLE_START_DATE = bundle.settings?.raffleStartDate || null;
-    MANAGERS = bundle.managers || [];
+    applyBundleAndRender(bundle);
+    localStorage.setItem(BUNDLE_CACHE_KEY, JSON.stringify(bundle)); // refresh cache for next visit
 
-    if (bundle.profile && bundle.profile.name) {
-      profile = bundle.profile;
-      localStorage.setItem(PROFILE_KEY, JSON.stringify(profile)); // refresh local cache
-      document.getElementById('advisorName').value = profile.name || '';
-      document.getElementById('advisorCode').value = profile.code || '';
-      document.getElementById('advisorMgr').value = profile.manager || '';
-      document.getElementById('setupCard').style.display = 'none';
+    if (!hadCache) loadTodayDraft();
 
-      advisorLogsCache = {};
-      (bundle.logs || []).forEach(l => { advisorLogsCache[l.date] = l; });
-
-      raffleEntries = bundle.raffleEntries || [];
-      lastRaffleDate = raffleEntries.length
-        ? raffleEntries.map(e => e.date).sort().pop()
-        : null;
-    } else if (!profile.name) {
-      // Genuinely no profile anywhere — real first-time advisor.
-      document.getElementById('setupCard').style.display = 'block';
+    if (profile.name) {
+      const firstName = profile.name.trim().split(' ')[0];
+      showToast(`Welcome, ${firstName}!`);
     }
   } catch (err) {
     console.error('Could not load initial data bundle:', err);
-    // Fall back to whatever was already shown from the local cache above —
-    // better than a completely broken screen if the network hiccups.
+    // If we already rendered from cache, the advisor still has a fully
+    // working (if slightly stale) app — this is exactly the point of
+    // stale-while-revalidate. Only a real problem if there was no cache.
+    if (!hadCache) {
+      showToast('Could not connect — check your internet and reload.');
+    }
   }
-
-  populateManagerDropdown();
-  updateUnitDisplay();
-
-  if (profile.name) {
-    const firstName = profile.name.trim().split(' ')[0];
-    showToast(`Welcome, ${firstName}!`);
-  }
-  initDateStrip();
-  buildCalendar();
-  buildMonthBoard();
-  buildActivityGrid();
-  buildCounterList();
-  loadTodayDraft();
-  renderRaffleBalance();
 
   // Preload the Manager Dashboard in the background now that the main app
   // has rendered, so opening it later feels instant instead of loading on
@@ -1530,6 +1579,7 @@ async function submitLog() {
     buildMonthBoard();
     updateStreak();
     renderRaffleBalance();
+    refreshBundleCache();
     showSummary(logEntry);
     showToast("Activity log submitted.");
   } catch (err) {
@@ -1777,6 +1827,7 @@ async function submitRaffleEntries() {
     lastRaffleDate = today;
     raffleEntries.push({ date: today, greenCount: green, redCount: red, entriesSubmitted: balance });
     renderRaffleBalance();
+    refreshBundleCache();
     showToast(`${balance} raffle entries submitted!`);
   } catch (err) {
     console.error(err);
@@ -1840,6 +1891,7 @@ function logoutAdvisor() {
   if (!ok) return;
   localStorage.removeItem(EMAIL_KEY);
   localStorage.removeItem(PROFILE_KEY);
+  localStorage.removeItem(BUNDLE_CACHE_KEY);
   location.reload();
 }
 
