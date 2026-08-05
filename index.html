@@ -1104,32 +1104,53 @@ async function submitEmailGate() {
 async function startApp() {
   // Show a fast, "good enough" name from the local cache immediately —
   // before any network calls — so the advisor isn't staring at a blank
-  // header. The authoritative version from the server arrives moments
-  // later via loadProfile() below and silently corrects it if different.
+  // header while the real request is in flight.
   showCachedProfileImmediately();
 
-  // If we already know their name from the cache, we can confidently start
-  // fetching their logs and raffle history RIGHT NOW, in the same wave as
-  // everything else — no need to wait for the server to confirm the
-  // profile first. This is what was actually causing the slow sign-in:
-  // two sequential network round-trips (profile, THEN logs/raffle) when
-  // for a returning advisor there was no real reason they couldn't all
-  // fire at once. Collapses ~2x network wait into ~1x.
-  const hadCachedName = !!profile.name;
-  const promises = [loadSettings(), loadManagers(), loadProfile()];
-  if (hadCachedName) {
-    promises.push(loadAdvisorLogs(), loadRaffleHistory());
+  // Everything the app needs to start (settings, managers, profile, logs,
+  // raffle history) now comes from ONE combined backend call instead of
+  // five separate ones. The previous "fire 5 in parallel" approach still
+  // took 10-15s in practice — Apps Script Web Apps don't reliably run
+  // multiple concurrent requests from the same client at the same time on
+  // Google's side, so "parallel" fetches were still getting queued behind
+  // each other server-side. One execution, one round trip, is the real fix.
+  try {
+    const res = await fetch(`${APPS_SCRIPT_URL}?action=getInitialBundle&email=${encodeURIComponent(advisorEmail || '')}`);
+    const bundle = await res.json();
+
+    GST_DATE = bundle.settings?.gstDate || null;
+    RAFFLE_START_DATE = bundle.settings?.raffleStartDate || null;
+    MANAGERS = bundle.managers || [];
+
+    if (bundle.profile && bundle.profile.name) {
+      profile = bundle.profile;
+      localStorage.setItem(PROFILE_KEY, JSON.stringify(profile)); // refresh local cache
+      document.getElementById('advisorName').value = profile.name || '';
+      document.getElementById('advisorCode').value = profile.code || '';
+      document.getElementById('advisorMgr').value = profile.manager || '';
+      document.getElementById('setupCard').style.display = 'none';
+
+      advisorLogsCache = {};
+      (bundle.logs || []).forEach(l => { advisorLogsCache[l.date] = l; });
+
+      raffleEntries = bundle.raffleEntries || [];
+      lastRaffleDate = raffleEntries.length
+        ? raffleEntries.map(e => e.date).sort().pop()
+        : null;
+    } else if (!profile.name) {
+      // Genuinely no profile anywhere — real first-time advisor.
+      document.getElementById('setupCard').style.display = 'block';
+    }
+  } catch (err) {
+    console.error('Could not load initial data bundle:', err);
+    // Fall back to whatever was already shown from the local cache above —
+    // better than a completely broken screen if the network hiccups.
   }
-  await Promise.all(promises);
-  updateUnitDisplay(); // re-run now that MANAGERS is guaranteed to be loaded
+
+  populateManagerDropdown();
+  updateUnitDisplay();
 
   if (profile.name) {
-    if (!hadCachedName) {
-      // First time on this device — we only just learned their name from
-      // the server just now, so this is the earliest point logs/raffle
-      // history could have started loading.
-      await Promise.all([loadAdvisorLogs(), loadRaffleHistory()]);
-    }
     const firstName = profile.name.trim().split(' ')[0];
     showToast(`Welcome, ${firstName}!`);
   }
