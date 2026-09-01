@@ -1142,6 +1142,8 @@ function applyBundleAndRender(bundle) {
     lastRaffleDate = raffleEntries.length
       ? raffleEntries.map(e => e.date).sort().pop()
       : null;
+
+    updateHeaderProfile(); // was missing after the combined-fetch rewrite — header stayed blank/dash
   } else if (!profile.name) {
     document.getElementById('setupCard').style.display = 'block';
   }
